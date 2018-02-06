@@ -1,5 +1,6 @@
 includes += -Ilib/libc
 
+objs += lib/libc/__ctype_b_loc.o
 objs += lib/libc/memchr.o
 objs += lib/libc/strcat.o
 objs += lib/libc/strcmp.o
