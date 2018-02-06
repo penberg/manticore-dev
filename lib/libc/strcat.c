@@ -1,6 +1,7 @@
 #include <string.h>
 
-char *strcat(char *restrict s1, const char *restrict s2)
+char *strcat(char *restrict dest, const char *restrict src)
 {
-	return s1;
+	strcpy(dest + strlen(dest), src);
+	return dest;
 }

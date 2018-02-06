@@ -1,6 +1,7 @@
 #include <string.h>
 
-int strcmp(const char *s1, const char *s2)
+int strcmp(const char *l, const char *r)
 {
-	return 0;
+	for (; *l==*r && *l; l++, r++);
+	return *(unsigned char *)l - *(unsigned char *)r;
 }
