@@ -3,6 +3,7 @@ LDFLAGS += -n
 
 includes += -Iarch/x86_64/include
 
+objs += arch/x86_64/acpi.o
 objs += arch/x86_64/cpu.o
 objs += arch/x86_64/boot.o
 objs += arch/x86_64/entry.o
@@ -19,6 +20,8 @@ objs += arch/x86_64/syscall.o
 objs += arch/x86_64/thread.o
 objs += arch/x86_64/task.o
 objs += drivers/uart/8250.o
+
+include lib/acpica/Makefile
 
 all: kernel.iso
 

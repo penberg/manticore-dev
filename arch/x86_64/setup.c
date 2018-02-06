@@ -18,6 +18,10 @@
 #include <string.h>
 #include <stdint.h>
 
+    #include "acpi.h"
+    #include "acpiosxf.h"
+    #include "acpixf.h"
+
 #define GDT_ENTRY(value) (((uint64_t) value) << 32)
 
 uint64_t gdt[] __attribute__ ((aligned (8))) = {
@@ -84,11 +88,13 @@ void arch_early_setup(void)
 	init_task();
 	init_syscall();
 	init_memory_map();
+	acpi_early_init();
 	init_mmu_map();
 	setup_nxe();
 }
 
 void arch_late_setup(void)
 {
+	acpi_late_init();
 	pci_probe();
 }

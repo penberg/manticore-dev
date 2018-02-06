@@ -8,8 +8,10 @@
 #include <arch/vmem-defs.h>
 #include <arch/vmem.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 enum {
 	COMMAND_LINE_TAG	= 1,
@@ -19,6 +21,8 @@ enum {
 	BIOS_BOOT_DEVICE_TAG	= 5,
 	MEMORY_MAP_TAG		= 6,
 	ELF_SYMBOLS_TAG		= 9,
+	ACPI_OLD_RSDP		= 14,
+	ACPI_NEW_RSDP		= 15,
 };
 
 struct header {
@@ -135,6 +139,31 @@ static void parse_memory_map(struct tag *tag, void *data)
 	}
 }
 
+struct acpi_rsdp {
+	char signature[8];
+	uint8_t checksum;
+	char oem_id[6];
+	uint8_t revision;
+	uint32_t rsdt_phys_addr;
+} __attribute__((packed));
+
+struct acpi_rsdp rsdp;
+void *rsdp_ptr;
+
+static void parse_acpi_old_rsdp(struct tag *tag, void *data)
+{
+	void *ptr = data + sizeof(*tag);
+	size_t size = tag->size - sizeof(*tag);
+	assert(size == sizeof(struct acpi_rsdp));
+	memcpy(&rsdp, ptr, size);
+	rsdp_ptr = &rsdp;
+}
+
+static void parse_acpi_new_rsdp(struct tag *tag, void *data)
+{
+	panic("parse_acpi_new_rsdp");
+}
+
 /*
  * Boot data section provided by the Multiboot 2 compatible boot loader:
  */
@@ -159,6 +188,12 @@ void init_memory_map(void)
 			break;
 		case MEMORY_MAP_TAG:
 			parse_memory_map(tag, data + offset);
+			break;
+		case ACPI_OLD_RSDP:
+			parse_acpi_old_rsdp(tag, data + offset);
+			break;
+		case ACPI_NEW_RSDP:
+			parse_acpi_new_rsdp(tag, data + offset);
 			break;
 		default:
 			break;
