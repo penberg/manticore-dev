@@ -10,3 +10,4 @@ objs += lib/libc/strncat.o
 objs += lib/libc/strncmp.o
 objs += lib/libc/strncpy.o
 objs += lib/libc/strnlen.o
+objs += lib/libc/strtoul.o
