@@ -14,6 +14,7 @@ typedef enum {
 
 typedef enum {
 	MMU_USER_PAGE = 1UL << 0,
+	MMU_NO_CACHE = 1UL << 1,
 } mmu_flags_t;
 
 /// MMU translation map
