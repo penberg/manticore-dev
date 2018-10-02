@@ -3,9 +3,10 @@
 use alloc::boxed::Box;
 use intrusive_collections::LinkedList;
 use kernel::device::{Device, DeviceOps};
+use kernel::memory;
 use kernel::mmu;
 use kernel::print;
-use pci::{PCIDriver, PCIDevice, DeviceID, PCI_VENDOR_ID_REDHAT, PCI_CAPABILITY_VENDOR};
+use pci::{DeviceID, PCIDevice, PCIDriver, PCI_CAPABILITY_VENDOR, PCI_VENDOR_ID_REDHAT};
 use virtqueue;
 
 const PCI_DEVICE_ID_VIRTIO_NET: u16 = 0x1041;
@@ -103,9 +104,17 @@ impl VirtioNetDevice {
     fn probe(pci_dev: &PCIDevice) -> Device {
         pci_dev.set_bus_master(true);
 
+        pci_dev.enable_msix();
+
         let mut dev = VirtioNetDevice::new();
 
         let bar_idx = VirtioNetDevice::find_capability(pci_dev, VIRTIO_PCI_CAP_DEVICE_CFG);
+
+        println!(
+            "virtio-net: using PCI BAR{} for device configuration",
+            bar_idx.unwrap()
+        );
+
         let ioport = pci_dev.bars[bar_idx.unwrap()].clone().unwrap();
 
         //
@@ -168,6 +177,21 @@ impl VirtioNetDevice {
                     QUEUE_AVAIL,
                 );
                 ioport.write64(mmu::virt_to_phys(vq.raw_used_ring_ptr) as u64, QUEUE_USED);
+
+                // RX queue:
+                if queue == 0 {
+                    // FIXME: Clean this up!
+                    let page = memory::page_alloc_small();
+                    // FIXME: Store raw pointer separately!
+                    vq.add_inbuf(mmu::virt_to_phys(page as usize) as usize, 4096);
+                    let vector = pci_dev.register_irq(queue, VirtioNetDevice::interrupt, 0);
+                    pci_dev.enable_irq(queue);
+                    ioport.write16(queue, QUEUE_MSIX_VECTOR);
+                    println!(
+                        "virtio-net: virtqueue {} is using IRQ vector {}",
+                        queue, vector
+                    );
+                }
                 ioport.write16(1 as u16, QUEUE_ENABLE);
             }
 
@@ -188,18 +212,28 @@ impl VirtioNetDevice {
     fn find_capability(pci_dev: &PCIDevice, cfg_type: u8) -> Option<usize> {
         let mut capability = pci_dev.func.find_capability(PCI_CAPABILITY_VENDOR);
         while let Some(offset) = capability {
-            let ty = pci_dev.func.read_config_u8(offset + VIRTIO_PCI_CAP_CFG_TYPE);
+            let ty = pci_dev
+                .func
+                .read_config_u8(offset + VIRTIO_PCI_CAP_CFG_TYPE);
             let bar = pci_dev.func.read_config_u8(offset + VIRTIO_PCI_CAP_BAR);
             if ty == cfg_type && bar < 0x05 {
                 return Some(bar as usize);
             }
-            capability = pci_dev.func.find_next_capability(PCI_CAPABILITY_VENDOR, offset);
+            capability = pci_dev
+                .func
+                .find_next_capability(PCI_CAPABILITY_VENDOR, offset);
         }
         None
     }
 
+    extern "C" fn interrupt(arg: usize) {
+        println!("virtio-net interrupt");
+    }
+
     fn new() -> Self {
-        VirtioNetDevice { vqs: LinkedList::new(virtqueue::VirtqueueAdapter::new()) }
+        VirtioNetDevice {
+            vqs: LinkedList::new(virtqueue::VirtqueueAdapter::new()),
+        }
     }
 
     fn add_vq(&mut self, vq: virtqueue::Virtqueue) {
@@ -209,8 +243,7 @@ impl VirtioNetDevice {
 
 impl DeviceOps for VirtioNetDevice {}
 
-pub static mut VIRTIO_NET_DRIVER: PCIDriver =
-    PCIDriver::new(
-        DeviceID::new(PCI_VENDOR_ID_REDHAT, PCI_DEVICE_ID_VIRTIO_NET),
-        VirtioNetDevice::probe,
-    );
+pub static mut VIRTIO_NET_DRIVER: PCIDriver = PCIDriver::new(
+    DeviceID::new(PCI_VENDOR_ID_REDHAT, PCI_DEVICE_ID_VIRTIO_NET),
+    VirtioNetDevice::probe,
+);
