@@ -8,6 +8,7 @@ use kernel::mmu;
 use kernel::print;
 use pci::{DeviceID, PCIDevice, PCIDriver, PCI_CAPABILITY_VENDOR, PCI_VENDOR_ID_REDHAT};
 use virtqueue;
+use core::intrinsics::transmute;
 
 const PCI_DEVICE_ID_VIRTIO_NET: u16 = 0x1041;
 
@@ -165,7 +166,7 @@ impl VirtioNetDevice {
 
             let size = unsafe { ioport.read16(QUEUE_SIZE) };
 
-            let vq = virtqueue::Virtqueue::new(size as usize);
+            let vq = Box::new(virtqueue::Virtqueue::new(size as usize));
 
             unsafe {
                 ioport.write64(
@@ -184,7 +185,7 @@ impl VirtioNetDevice {
                     let page = memory::page_alloc_small();
                     // FIXME: Store raw pointer separately!
                     vq.add_inbuf(mmu::virt_to_phys(page as usize) as usize, 4096);
-                    let vector = pci_dev.register_irq(queue, VirtioNetDevice::interrupt, 0);
+                    let vector = pci_dev.register_irq(queue, VirtioNetDevice::interrupt, transmute(&*vq));
                     pci_dev.enable_irq(queue);
                     ioport.write16(queue, QUEUE_MSIX_VECTOR);
                     println!(
@@ -226,8 +227,51 @@ impl VirtioNetDevice {
         None
     }
 
+    fn recv(&self) {
+        for ref mut vq in self.vqs.iter() {
+            unsafe {
+                // FIXME: Used ring is little endian!
+                let last_idx = (*vq.used_ring()).idx;
+                if vq.last_seen_used() != last_idx {
+                    let idx = vq.last_seen_used(); // FIXME: iterate over a range!
+                    let used = &(*vq.used_ring()).ring[idx as usize];
+                    let start = vq.get_buf(used.id as u16) as u64;
+                    /*
+                    let ptr0: *const u8 = mmu::phys_to_virt((start + 12) as usize) as *const u8;
+                    let hdr: *const VirtioNetHdr = mem::transmute(ptr0);
+                    let ptr: *const u8 = mmu::phys_to_virt((start + 12) as usize) as *const u8;
+                    let data = unsafe { slice::from_raw_parts(ptr0, used.len as usize) };
+                    let ethernet: *const Ethernet = mem::transmute(ptr);
+                    match (*ethernet).ether_type() {
+                        EtherType::Arp => {
+                            let arp: *const ArpHeader = mem::transmute(ptr);
+                            println!("{:?}", *arp)
+                        }
+                        _ => println!("{:?} {:?}", *hdr, *ethernet)
+                    }
+                    */
+                    vq.advance_last_seen_used();
+                    let avail = vq.available_ring();
+                    (*avail).ring[((*avail).idx % vq.queue_size as u16) as usize] = 0;
+                    (*avail).idx += 1;
+                }
+            }
+        }
+    }
+
     extern "C" fn interrupt(arg: usize) {
-        println!("virtio-net interrupt");
+        let mut vq_p: *mut virtqueue::Virtqueue = unsafe { transmute(arg) };
+        let mut vq = unsafe { &*vq_p };
+        println!("virtio-net interrupt: {:?}", vq);
+        /* FIXME: call recv */
+        let last_idx = unsafe { (*vq.used_ring()).idx };
+        if vq.last_seen_used() != last_idx {
+            println!("virtqueue has data");
+            vq.advance_last_seen_used();
+            let avail = vq.available_ring();
+            unsafe { (*avail).ring[((*avail).idx % vq.queue_size as u16) as usize] = 0; }
+            unsafe { (*avail).idx += 1; }
+        }
     }
 
     fn new() -> Self {
@@ -236,8 +280,8 @@ impl VirtioNetDevice {
         }
     }
 
-    fn add_vq(&mut self, vq: virtqueue::Virtqueue) {
-        self.vqs.push_back(Box::new(vq));
+    fn add_vq(&mut self, vq: Box<virtqueue::Virtqueue>) {
+        self.vqs.push_back(vq);
     }
 }
 
