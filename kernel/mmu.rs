@@ -7,6 +7,7 @@ pub const MMU_PROT_EXEC: usize = 1 << 2;
 pub const MMU_USER_PAGE: usize = 1 << 0;
 
 extern "C" {
+    pub fn kernel_mmu_map() -> MMUMap;
     pub fn mmu_current_map() -> MMUMap;
     pub fn mmu_load_map(map: MMUMap);
     pub fn mmu_map_range(map: MMUMap, vaddr: usize, paddr: usize, sz: usize, prot: usize, flags: usize) -> i32;

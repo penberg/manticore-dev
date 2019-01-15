@@ -65,7 +65,7 @@ extern "C" {
 /// Create a new process.
 #[no_mangle]
 pub unsafe extern "C" fn process_run(image_start: *const u8, image_size: usize) {
-    let mmu_map = mmu::mmu_current_map();
+    let mmu_map = mmu::kernel_mmu_map();
     let mut vmspace = VMAddressSpace::new(mmu_map);
 
     let buf = slice::from_raw_parts(image_start, image_size);
