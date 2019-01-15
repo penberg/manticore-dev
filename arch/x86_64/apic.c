@@ -5,6 +5,7 @@
 #include <arch/msr.h>
 
 #include <kernel/printf.h>
+#include <kernel/sched.h>
 #include <kernel/irq.h>
 
 #include <stdbool.h>
@@ -52,8 +53,7 @@ static void apic_write(uint32_t addr, uint64_t val)
 
 static void apic_timer_intr(void *arg)
 {
-	/* An interrupt wakes up the kernel from its idle loop that blocks on
-	   an arch_halt_cpu() call.  */
+	schedule();
 }
 
 static void apic_eoi(void)
