@@ -20,4 +20,5 @@ void initrd_load(void)
 	printf("Found initrd at %p (%lu bytes)\n", initrd_start, initrd_size);
 
 	process_run(initrd_start, initrd_size);
+	process_run(initrd_start, initrd_size); /* FIXME */
 }
