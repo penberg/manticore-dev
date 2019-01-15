@@ -53,7 +53,7 @@ static void init_gdt(void)
 		: "memory");
 }
 
-void init_mmu_map(void)
+mmu_map_t kernel_mmu_map(void)
 {
 	void *page = page_alloc_small();
 	if (!page) {
@@ -69,6 +69,12 @@ void init_mmu_map(void)
 			panic("Unable to setup kernel MMU map");
 		}
 	}
+	return mmu_map;
+}
+
+void init_mmu_map(void)
+{
+	mmu_map_t mmu_map = kernel_mmu_map();
 	mmu_load_map(mmu_map);
 	mmu_invalidate_tlb();
 }
