@@ -5,6 +5,7 @@
 use alloc::rc::Rc;
 use intrusive_collections::LinkedList;
 use process::{Process, ProcessAdapter, ProcessState, TaskState};
+use print;
 
 /// Current running process.
 static mut CURRENT: Option<Rc<Process>> = None;
@@ -50,6 +51,7 @@ pub extern "C" fn schedule() {
     });
     if let Some(next) = dequeue() {
         // FIXME: make prev RUNNABLE and next RUNNING
+        println!("Scheduling process {:?}...", next); // FIXME: drop
         set_current(next.clone());
         next.state.replace(ProcessState::RUNNING);
         let next_ts = next.task_state;
