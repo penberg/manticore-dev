@@ -94,6 +94,4 @@ void init_apic(void)
 	wrmsr(X86_IA32_APIC_BASE, _apic_base | X86_IA32_APIC_BASE_EXTD | X86_IA32_APIC_BASE_EN);
 	apic_write(ACPI_LVT_LINT0, 0);
 	apic_write(APIC_SPIV, 0x1ff);
-
-	apic_timer_init();
 }
