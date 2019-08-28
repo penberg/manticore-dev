@@ -28,6 +28,9 @@ static void idle(void)
 	}
 }
 
+
+/// The function start_kernel initializes and starts the kernel for boot.
+
 void start_kernel(void)
 {
 	int err;

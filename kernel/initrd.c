@@ -4,6 +4,10 @@
 #include <kernel/page-alloc.h>
 #include <kernel/printf.h>
 
+
+/// \fn initrd_load(void)
+/// initrd_load loads initrd information and initialzes the size
+
 void *initrd_start;
 void *initrd_end;
 

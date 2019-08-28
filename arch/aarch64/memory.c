@@ -10,6 +10,10 @@
 
 void *dtb;
 
+/// Initialize kernel memory map.
+///
+/// This function uses the Device Tree Blob (DTB) to discover the physical
+/// memory available on the system.
 void init_memory_map(void)
 {
 	if (!dtb) {

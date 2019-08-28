@@ -17,6 +17,9 @@ static void do_panic(char *msg)
 	}
 }
 
+/// Stop the kernel after a fatal internal error.
+///
+/// \param msg Format string of the kernel panic message.
 void panic(const char *fmt, ...)
 {
 	static char msg[64];

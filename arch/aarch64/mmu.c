@@ -2,6 +2,10 @@
 
 #include <kernel/errno.h>
 
+/// Converts a virtual memory address to physical address.
+///
+/// \param    addr Virtual address to translate
+/// \returns       returns physical memory address of addr
 phys_t virt_to_phys(virt_t addr)
 {
 	return addr;
