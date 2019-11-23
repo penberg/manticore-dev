@@ -30,6 +30,7 @@ struct RawEvent {
 }
 
 const EVENT_PACKET_RX: usize = 0x01;
+const EVENT_PACKET_TX_COMPLETE: usize = 0x02;
 
 /// An event queue between kernel and user space.
 #[derive(Debug)]

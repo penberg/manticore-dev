@@ -5,6 +5,7 @@
 
 enum {
 	EVENT_PACKET_RX = 0x01,
+	EVENT_PACKET_TX_COMPLETE = 0x02,
 };
 
 struct event {
