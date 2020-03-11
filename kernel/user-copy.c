@@ -2,6 +2,7 @@
 
 #include <kernel/errno.h>
 
+#include <arch/vmem-defs.h>
 #include <arch/vmem.h>
 
 extern int __memcpy_user_safe(void __user *dest, const void *src, size_t len);

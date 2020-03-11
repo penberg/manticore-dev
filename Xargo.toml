@@ -3,3 +3,6 @@ alloc = {}
 
 [target.aarch64-unknown-none.dependencies]
 alloc = {}
+
+[target.riscv-unknown-none.dependencies]
+alloc = {}
