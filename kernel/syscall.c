@@ -2,7 +2,6 @@
 
 #include <kernel/types.h>
 #include <kernel/console.h>
-#include <kernel/device.h>
 #include <kernel/errno.h>
 #include <kernel/panic.h>
 #include <kernel/sched.h>
@@ -24,20 +23,6 @@ static int sys_wait(void)
 	return 0;
 }
 
-static int sys_subscribe(const char *uevent)
-{
-#define EVENT_SIZE 32
-	char event[EVENT_SIZE];
-	int err;
-
-	err = strncpy_from_user(event, uevent, EVENT_SIZE);
-	if (err < 0) {
-		return err;
-	}
-
-	return process_subscribe(event);
-}
-
 static int sys_getevents(void **events)
 {
 	*events = process_getevents();
@@ -52,9 +37,22 @@ static int sys_get_io_queue(void **io_queue)
 	return 0;
 }
 
-static int sys_get_config(const char *dev_name, int opt, void *buf, size_t len)
+static int sys_get_config(int desc, int opt, void *buf, size_t len)
 {
-	return device_get_config(dev_name, opt, buf, len);
+	return process_get_config(desc, opt, buf, len);
+}
+
+static int sys_acquire(const char /* __user */ *uname, int flags)
+{
+#define MAX_NAME_LEN 32
+	char name[MAX_NAME_LEN];
+	int err;
+
+	err = strncpy_from_user(name, uname, MAX_NAME_LEN);
+	if (err < 0) {
+		return err;
+	}
+	return process_acquire(name, flags);
 }
 
 static ssize_t sys_console_print(const char /* __user */ *ubuf, size_t count)
@@ -135,10 +133,10 @@ long syscall(int nr, ...)
 	SYSCALL1(exit, int);
 	SYSCALL0(wait);
 	SYSCALL2(console_print, const char *, size_t);
-	SYSCALL1(subscribe, const char *);
+	SYSCALL2(acquire, const char *, int);
 	SYSCALL1(getevents, void **);
 	SYSCALL1(get_io_queue, void **);
-	SYSCALL4(get_config, const char *, int, void *, size_t);
+	SYSCALL4(get_config, int, int, void *, size_t);
 	}
 	return -ENOSYS;
 }

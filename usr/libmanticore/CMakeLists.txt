@@ -6,12 +6,12 @@ add_library(manticore
     src/atomic-ring-buffer.c
     src/io_queue.c
     src/syscall.c
+    src/syscalls/acquire.c
     src/syscalls/console_print.c
     src/syscalls/exit.c
     src/syscalls/get_config.c
     src/syscalls/get_io_queue.c
     src/syscalls/getevents.c
-    src/syscalls/subscribe.c
     src/syscalls/wait.c
 )
 

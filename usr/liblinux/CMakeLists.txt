@@ -12,6 +12,7 @@ add_library(linux
     src/stdlib.c
     src/string/strerror.c
     src/string/strlen.c
+    src/internal/setup.c
 )
 
 target_include_directories(linux PUBLIC

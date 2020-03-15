@@ -8,6 +8,7 @@
 #![feature(asm)]
 #![no_std]
 
+#[macro_use]
 extern crate alloc;
 #[macro_use]
 extern crate bitflags;
@@ -26,6 +27,7 @@ pub mod memory;
 pub mod mmu;
 pub mod vm;
 pub mod process;
+pub mod resource;
 pub mod sched;
 pub mod device;
 pub mod ioport;

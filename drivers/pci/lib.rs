@@ -11,9 +11,11 @@ extern crate kernel;
 #[macro_use]
 extern crate intrusive_collections;
 
+use alloc::rc::Rc;
 use core::intrinsics::transmute;
 use intrusive_collections::{LinkedList, LinkedListLink, UnsafeRef};
-use kernel::device::{register_device, Device};
+use kernel::device::{register_device};
+use kernel::resource::{Resource};
 use kernel::ioport::IOPort;
 use kernel::print;
 
@@ -530,7 +532,7 @@ fn pci_probe_slot(bus_id: u16, slot_id: u16) -> bool {
     return result;
 }
 
-type PCIProbe = fn(&PCIDevice) -> Option<Device>;
+type PCIProbe = fn(&PCIDevice) -> Option<Rc<Resource>>;
 
 pub struct PCIDriver {
     dev_id: DeviceID,

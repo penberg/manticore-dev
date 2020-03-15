@@ -61,6 +61,7 @@ KERNEL_LIB_SRC += kernel/memory.rs
 KERNEL_LIB_SRC += kernel/mmu.rs
 KERNEL_LIB_SRC += kernel/print.rs
 KERNEL_LIB_SRC += kernel/process.rs
+KERNEL_LIB_SRC += kernel/resource.rs
 KERNEL_LIB_SRC += kernel/sched.rs
 KERNEL_LIB_SRC += kernel/vm.rs
 KERNEL_LIB_SRC += manticore.rs

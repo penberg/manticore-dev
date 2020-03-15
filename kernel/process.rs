@@ -3,10 +3,12 @@ use core::intrinsics::transmute;
 use core::slice;
 use core::cell::{Cell, RefCell};
 use event::{Event, EventListener, EventQueue};
+use errno::{Error, Result, EINVAL};
 use ioqueue::{IOQueue};
 use intrusive_collections::LinkedListLink;
 use memory;
 use mmu;
+use resource::{NAMESPACE, Resource, ResourceDesc, ResourceSpace};
 use sched;
 use vm::{VMAddressSpace, VMProt, VM_PROT_EXEC, VM_PROT_READ, VM_PROT_RW, VM_PROT_WRITE};
 use xmas_elf::program;
@@ -22,11 +24,11 @@ pub enum ProcessState {
     WAITING,
 }
 
-#[derive(Debug)]
 pub struct Process {
     pub state: RefCell<ProcessState>,
     pub task_state: TaskState,
     pub vmspace: RefCell<VMAddressSpace>,
+    pub resource_space: RefCell<ResourceSpace>,
     pub page_fault_fixup: Cell<u64>,
     pub event_queue: RefCell<EventQueue>,
     pub io_queue: RefCell<IOQueue>,
@@ -41,6 +43,7 @@ impl Process {
             state: RefCell::new(ProcessState::RUNNABLE),
             task_state: task_state,
             vmspace: RefCell::new(vmspace),
+            resource_space: RefCell::new(ResourceSpace::new()),
             page_fault_fixup: Cell::new(0),
             event_queue: RefCell::new(event_queue),
             io_queue: RefCell::new(io_queue),
@@ -54,6 +57,14 @@ impl Process {
 
     pub fn stack_top(&self) -> u64 {
         unsafe { task_state_stack_top(self.task_state) }
+    }
+
+    pub fn acquire(&self, name: &'static str) -> Result<(Rc<Resource>, ResourceDesc)> {
+        if let Some(resource) = unsafe { NAMESPACE.lookup(name) } {
+            let desc = self.resource_space.borrow_mut().attach(resource.clone());
+            return Ok((resource, desc));
+        }
+        return Err(Error::new(EINVAL));
     }
 }
 

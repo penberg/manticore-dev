@@ -46,11 +46,6 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 		errno = EBADF;
 		return -1;
 	}
-	int err = subscribe("/dev/eth");
-	if (err) {
-		errno = -err;
-		return -1;
-	}
 	return 0;
 }
 
