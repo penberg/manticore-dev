@@ -10,14 +10,22 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+#define TRACE_SYSCALL(syscall) do {		\
+	printf("syscall %s\n", #syscall);	\
+} while (0)
+
 static int sys_exit(int status)
 {
+	TRACE_SYSCALL(exit);
+
 	panic("Process terminated with exit status %d.", status);
 	return 0;
 }
 
 static int sys_wait(void)
 {
+	TRACE_SYSCALL(wait);
+
 	process_wait();
 
 	return 0;
@@ -25,6 +33,8 @@ static int sys_wait(void)
 
 static int sys_subscribe(const char *uevent)
 {
+	TRACE_SYSCALL(subscribe);
+
 #define EVENT_SIZE 32
 	char event[EVENT_SIZE];
 	int err;
@@ -39,6 +49,8 @@ static int sys_subscribe(const char *uevent)
 
 static int sys_getevents(void **events)
 {
+	TRACE_SYSCALL(getevents);
+
 	*events = process_getevents();
 
 	return 0;
@@ -46,11 +58,15 @@ static int sys_getevents(void **events)
 
 static int sys_get_config(int desc, int opt, void *buf, size_t len)
 {
+	TRACE_SYSCALL(get_config);
+
 	return process_get_config(desc, opt, buf, len);
 }
 
 static int sys_acquire(const char /* __user */ *uname, int flags)
 {
+	TRACE_SYSCALL(acquire);
+
 #define MAX_NAME_LEN 32
 	char name[MAX_NAME_LEN];
 	int err;
@@ -64,6 +80,8 @@ static int sys_acquire(const char /* __user */ *uname, int flags)
 
 static ssize_t sys_console_print(const char /* __user */ *ubuf, size_t count)
 {
+	TRACE_SYSCALL(console_print);
+
 	ssize_t off = 0;
 
 	while (count) {
