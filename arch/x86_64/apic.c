@@ -95,5 +95,7 @@ void init_apic(void)
 	apic_write(ACPI_LVT_LINT0, 0);
 	apic_write(APIC_SPIV, 0x1ff);
 
+#if 0
 	apic_timer_init();
+#endif
 }
