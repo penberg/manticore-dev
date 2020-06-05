@@ -92,6 +92,9 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 			}
 			break;
 		}
+		case EVENT_PACKET_TX_COMPLETE:
+			/* FIXME: free TX memory region */
+			break;
 		default:
 			break;
 		}
