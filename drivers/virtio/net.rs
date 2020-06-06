@@ -114,6 +114,8 @@ const VIRTIO_TX_QUEUE_IDX: u16 = 1;
 
 type MacAddr = [u8; 6];
 
+const VIRTIO_NET_HDR_F_NEEDS_CSUM: u8 = 1;
+
 #[repr(C)]
 #[derive(Debug)]
 struct VirtioNetHdr {
@@ -208,8 +210,11 @@ impl VirtioNetDevice {
         //
         // 4. Negotiate features
         //
-        let features = Features::VIRTIO_NET_F_MAC | Features::VIRTIO_NET_F_MRG_RXBUF;
-        unsafe { ioport.write32(features.bits(), DRIVER_FEATURE) };
+        let device_features = unsafe { ioport.read32(DEVICE_FEATURE); };
+        println!("Device features = {:?}", device_features);
+
+        let driver_features = Features::VIRTIO_NET_F_CSUM | Features::VIRTIO_NET_F_MAC | Features::VIRTIO_NET_F_MRG_RXBUF;
+        unsafe { ioport.write32(driver_features.bits(), DRIVER_FEATURE) };
 
         //
         // 5. Set the FEATURES_OK status bit
@@ -274,6 +279,7 @@ impl VirtioNetDevice {
         }
 
         let dev_features = Features::from_bits_truncate(unsafe { ioport.read32(DEVICE_FEATURE) });
+        println!("Device features = {:?}", dev_features);
 
         if dev_features.contains(Features::VIRTIO_NET_F_MAC) {
             if let Some(dev_cfg_cap) = VirtioNetDevice::find_capability(pci_dev, VIRTIO_PCI_CAP_DEVICE_CFG) {
@@ -288,6 +294,9 @@ impl VirtioNetDevice {
                 );
                 dev.mac_addr = Some(mac);
             }
+        }
+        if dev_features.contains(Features::VIRTIO_NET_F_CSUM) {
+            println!("virtio-net: Checksum offload enabled");
         }
 
         Some(Rc::new(Device::new(VIRTIO_DEV_NAME, RefCell::new(Rc::new(dev)))))
@@ -362,12 +371,12 @@ impl VirtioNetDevice {
         match cmd {
             IOCmd::PacketTX { addr, len } => {
                 let hdr = VirtioNetHdr {
-                    flags: 0,
+                    flags: VIRTIO_NET_HDR_F_NEEDS_CSUM,
                     gso_type: 0,
                     hdr_len: 0,
                     gso_size: 0,
-                    csum_start: 0,
-                    csum_offset: 0,
+                    csum_start: 14 + 20,
+                    csum_offset: 6,
                     num_buffers: 0,
                 };
                 unsafe { rlibc::memcpy(mem::transmute(self.tx_page), mem::transmute(&hdr), mem::size_of::<VirtioNetHdr>()); }
