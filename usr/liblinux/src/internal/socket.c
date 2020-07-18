@@ -118,7 +118,31 @@ int socket_listen(struct socket *sk, int backlog)
 ssize_t socket_recvfrom(struct socket *sk, void *restrict buf, size_t len, int flags,
 			struct sockaddr *restrict src_addr, socklen_t *restrict addrlen)
 {
-	return sk->ops->recvfrom(sk, buf, len, flags, src_addr, addrlen);
+	if (addrlen && *addrlen < sizeof(struct sockaddr_in)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	struct sk_msg *msg = sk_msg_buf_head(&sk->msg_buf);
+	if (!msg) {
+		/* FIXME: support blocking behavior */
+		errno = EAGAIN;
+		return -1;
+	}
+
+	ssize_t nr = sk_msg_consume(sk->&msg_buf, buf, len);
+	if (sk_msg_is_empty(&sk->msg_buf)) {
+		sk_msg_buf_remove(&sk->msg_buf, msg);
+	}
+
+	if (src_addr && addrlen) {
+		struct sockaddr_in *saddr_in = (void *)src_addr;
+		saddr_in->sin_addr.s_addr = msg->src_addr;
+		saddr_in->sin_port = msg->src_port;
+		*addrlen = sizeof(struct sockaddr_in);
+	}
+
+	return nr;
 }
 
 ssize_t socket_sendto(struct socket *sk, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,

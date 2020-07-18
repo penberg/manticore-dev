@@ -16,10 +16,17 @@ struct socket_operations {
 			  socklen_t addrlen);
 };
 
+struct sk_frag {
+	size_t frag_size;
+	// Pointer to next fragment or NULL if last fragment.
+	struct sk_frag *next;
+};
+
 struct socket {
 	const struct socket_operations *ops;
 	uint16_t local_port;
 	char rx_buffer[1500]; /* FIXME make bigger */
+	struct sk_frag frags[32];
 };
 
 int socket_alloc(int domain, int type, int protocol);
