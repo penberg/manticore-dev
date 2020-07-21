@@ -6,7 +6,8 @@
 
 #include <sys/socket.h>
 
-struct packet_view;
+#include "internal/net.h"
+
 struct socket;
 
 struct socket_operations {
@@ -16,9 +17,13 @@ struct socket_operations {
 			  socklen_t addrlen);
 };
 
+/* Maximum number of fragments per socket.  */
+#define MAX_FRAGMENTS 32
+
 struct socket {
 	const struct socket_operations *ops;
 	uint16_t local_port;
+	struct packet_view fragments[MAX_FRAGMENTS];
 	char rx_buffer[1500]; /* FIXME make bigger */
 };
 
