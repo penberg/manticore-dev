@@ -16,7 +16,7 @@ struct socket;
 struct packet_view {
 	void *data;
 	uint32_t len;
-};
+} __attribute__((packed));
 
 /// Returns the length of the packet pointed to by \pk
 static inline size_t packet_view_len(struct packet_view *pk)
