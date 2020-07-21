@@ -85,8 +85,8 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 		switch (kern_event->type) {
 		case EVENT_PACKET_RX: {
 			struct packet_view pk = {
-				.start = kern_event->addr,
-				.end = kern_event->addr + kern_event->len,
+				.data = kern_event->addr,
+				.len = kern_event->len,
 			};
 			if (net_input(&pk)) {
 				struct epoll_event *ep_event = &events[nr_events++];

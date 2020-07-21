@@ -20,7 +20,7 @@ static bool net_input_one(struct packet_view *pk)
 {
 	LIBLINUX_TRACE(net_input);
 
-	struct ethhdr *ethh = pk->start;
+	struct ethhdr *ethh = pk->data;
 
 	if (packet_view_len(pk) < sizeof(*ethh)) {
 		stats.packets_dropped++;
@@ -46,9 +46,9 @@ bool net_input(struct packet_view *pk)
 {
 	bool ret = false;
 
-	void *addr = pk->start;
+	void *addr = pk->data;
 
-	size_t len = pk->end - pk->start;
+	size_t len = pk->len;
 
 	while (packet_view_len(pk) > 0) {
 		ret |= net_input_one(pk);

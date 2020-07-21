@@ -79,7 +79,7 @@ struct socket *socket_lookup_by_flow(uint16_t local_port, uint16_t foreign_port)
 void socket_input(struct socket *sk, struct packet_view *pk)
 {
 	// FIXME: This overwrites existing data.
-	memcpy(sk->rx_buffer, pk->start, packet_view_len(pk));
+	memcpy(sk->rx_buffer, pk->data, packet_view_len(pk));
 }
 
 int socket_accept(struct socket *sk, struct sockaddr *restrict addr, socklen_t *restrict addrlen)

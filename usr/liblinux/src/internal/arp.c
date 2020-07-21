@@ -60,7 +60,7 @@ void arp_input(struct packet_view *pk)
 {
 	LIBLINUX_TRACE(arp_input);
 
-	struct arphdr *arph = pk->start;
+	struct arphdr *arph = pk->data;
 
 	switch (ntohs(arph->ar_op)) {
 	case ARPOP_REQUEST:

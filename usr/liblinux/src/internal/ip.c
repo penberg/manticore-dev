@@ -238,7 +238,7 @@ static void udp_input(struct packet_view *pk)
 {
 	LIBLINUX_TRACE(udp_input);
 
-	const struct udphdr *udph = pk->start + sizeof(struct iphdr);
+	const struct udphdr *udph = pk->data + sizeof(struct iphdr);
 
 	uint16_t udp_len = ntohs(udph->len);
 
@@ -255,8 +255,7 @@ void ip_input(struct packet_view *pk)
 {
 	LIBLINUX_TRACE(ip_input);
 
-
-	const struct iphdr *iph = pk->start;
+	const struct iphdr *iph = pk->data;
 
 	if (packet_view_len(pk) < sizeof(*iph)) {
 		goto drop_datagram;

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/socket.h>
 
 struct socket;
@@ -13,14 +14,14 @@ struct socket;
 /// A packet descriptor specifies an (start, end) tuple that points to a
 /// contiguous memory area that contains one packet.
 struct packet_view {
-	void *start;
-	void *end;
+	void *data;
+	uint32_t len;
 };
 
 /// Returns the length of the packet pointed to by \pk
 static inline size_t packet_view_len(struct packet_view *pk)
 {
-	return pk->end - pk->start;
+	return pk->len;
 }
 
 /// Trims \size bytes from the packet descriptor \pk.
@@ -28,7 +29,8 @@ static inline void packet_view_trim(struct packet_view *pk, size_t size)
 {
 	assert(packet_view_len(pk) >= size);
 
-	pk->start += size;
+	pk->data += size;
+	pk->len -= size;
 }
 
 /// Forward a packet descritpro to the network stack.
