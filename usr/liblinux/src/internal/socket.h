@@ -17,13 +17,36 @@ struct socket_operations {
 			  socklen_t addrlen);
 };
 
-/* Maximum number of fragments per socket.  */
-#define MAX_FRAGMENTS 32
+struct ip_fragment {
+	void *data;
+	size_t remaining;
+	uint16_t offset;
+	uint16_t len;
+};
+
+#define MAX_FRAGMENTS 8 /* FIXME */
+
+struct ip_datagram {
+	uint32_t host;
+	uint16_t port;
+	uint16_t id;
+	uint16_t offset;
+	struct ip_fragment fragments[MAX_FRAGMENTS];
+	size_t nr_fragments;
+};
+
+bool ip_datagram_append(struct ip_datagram *datagram, void *data, uint16_t offset, uint16_t len);
+
+struct ip_fragment *datagram_next_fragment(struct ip_datagram *datagram);
+
+size_t ip_fragment_consume(struct ip_fragment *fragment, void *buf, size_t len);
+
+#define MAX_DATAGRAMS 8 /* FIXME */
 
 struct socket {
 	const struct socket_operations *ops;
 	uint16_t local_port;
-	struct packet_view fragments[MAX_FRAGMENTS];
+	struct ip_datagram datagrams[MAX_DATAGRAMS];
 	char rx_buffer[1500]; /* FIXME make bigger */
 };
 
@@ -31,8 +54,10 @@ int socket_alloc(int domain, int type, int protocol);
 
 struct socket *socket_lookup_by_fd(int sockfd);
 struct socket *socket_lookup_by_flow(uint16_t local_port, uint16_t foreign_port);
+struct ip_datagram *socket_get_datagram(struct socket *socket, uint16_t id);
+struct ip_datagram *socket_next_datagram(struct socket *socket);
 
-void socket_input(struct socket *sk, struct packet_view *pk);
+void* socket_input(struct socket *sk, struct packet_view *pk);
 
 int socket_accept(struct socket *sk, struct sockaddr *restrict addr, socklen_t *restrict addrlen);
 int socket_bind(struct socket *sk, const struct sockaddr *addr, socklen_t addrlen);

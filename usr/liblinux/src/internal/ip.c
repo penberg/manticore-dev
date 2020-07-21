@@ -17,6 +17,7 @@
 
 struct ip_statistics {
 	uint64_t	ip_datagrams_dropped;
+	uint64_t	udp_datagrams_dropped;
 };
 
 static struct ip_statistics stats;
@@ -26,36 +27,41 @@ ssize_t udp_recvfrom(struct socket *sk, void *restrict buf, size_t len, int flag
 {
 	LIBLINUX_TRACE(udp_recvfrom);
 
-	struct iphdr *iph = (void *) sk->rx_buffer;
-
-	// FIXME: check pbuf length
-
-	struct udphdr *udph = (void *) sk->rx_buffer + sizeof(struct iphdr);
-
-	uint16_t udp_len = ntohs(udph->len);
-
-	size_t data_off = sizeof(struct iphdr) + sizeof(struct udphdr);
-	size_t data_len = udp_len - sizeof(struct udphdr);
-
-	// FIXME: check pbuf length
+	struct ip_datagram *datagram = socket_next_datagram(sk);
+	if (!datagram) {
+#if 0 // FIXME
+		errno = EWOULDBLOCK;
+#endif
+		return -1;
+	}
 
 	if (*addrlen < sizeof(struct sockaddr_in)) {
 		errno = EINVAL;
 		return -1;
 	}
 	struct sockaddr_in *saddr_in = (void *)src_addr;
-	saddr_in->sin_addr.s_addr = iph->saddr;
-	saddr_in->sin_port = udph->source;
+	saddr_in->sin_addr.s_addr = datagram->host;
+	saddr_in->sin_port = datagram->port;
 	*addrlen = sizeof(struct sockaddr_in);
 
-	// FIXME: How can we retrieve rest of the data?
-	size_t nr = data_len;
-	if (nr > len) {
-		nr = len;
+	size_t remaining = len;
+	ssize_t ret = 0;
+	for (;;) {
+		struct ip_fragment *fragment = datagram_next_fragment(datagram);
+		if (!fragment) {
+			/* FIXME: consume datagram */
+			break;
+		}
+		if (!remaining) {
+			break;
+		}
+		size_t nr = ip_fragment_consume(fragment, buf, remaining);
+		assert(nr <= remaining);
+		datagram->offset += nr;
+		remaining -= nr;
+		ret += nr;
 	}
-	memcpy(buf, sk->rx_buffer + data_off, nr);
-
-	return nr;
+	return ret;
 }
 
 static inline uint64_t checksum_add(uint64_t sum, const void *data, size_t count)
@@ -234,20 +240,36 @@ ssize_t udp_sendto(struct socket *sk, const void *buf, size_t len, int flags, co
 	return len;
 }
 
-static void udp_input(struct packet_view *pk)
+static void udp_input(struct packet_view *pk, uint32_t ip_host, uint16_t ip_id, uint16_t ip_offset)
 {
 	LIBLINUX_TRACE(udp_input);
 
+	printf("%s(pk=%p, ip_id=%u, ip_offset=%u)\n", __func__, pk, ip_id, ip_offset);
 	const struct udphdr *udph = pk->data + sizeof(struct iphdr);
 
+	/* FIXME: Only the first IP datagram fragment has a UDP header. */
 	uint16_t udp_len = ntohs(udph->len);
 
 	struct socket *sk = socket_lookup_by_flow(udph->dest, udph->source);
 
 	assert(sk != NULL);
 
-	socket_input(sk, pk);
+	struct ip_datagram *datagram = socket_get_datagram(sk, ip_id);
 
+	/* FIXME: if this is the first fragment, let's extract address and port from header. */
+	if (ip_offset == 0) {
+		datagram->host = ip_host;
+		datagram->port = udph->source;
+		printf("%s => host = %lu, port = %u\n", __func__, ip_host, udph->source);
+	}
+
+	if (datagram) {
+		/* FIXME: rename this -- we append packet _data_ to RX buffer */
+		void *data = socket_input(sk, pk);
+		ip_datagram_append(datagram, data, ip_offset, packet_view_len(pk));
+	} else {
+		stats.udp_datagrams_dropped++;
+	}
 	packet_view_trim(pk, sizeof(struct iphdr) + udp_len);
 }
 
@@ -269,11 +291,20 @@ void ip_input(struct packet_view *pk)
 	}
 	/* FIXME: verify checksum */
 
-	/* FIXME: fragmentation */
+	uint32_t ip_host = iph->saddr;
 
+	uint16_t ip_id = ntohs(iph->id);
+
+	uint16_t ip_offset = ntohs(iph->frag_off);
+
+	if (ip_offset & IP_MF) {
+		assert(0); // FIXME: fragmentation
+	}
+
+	/* FIXME: Look up "reassembly buffer" by foreign and local internet addresses, protocol ID, and identification field.  */
 	switch (iph->protocol) {
 	case IPPROTO_UDP:
-		udp_input(pk);
+		udp_input(pk, ip_host, ip_id, ip_offset & IP_OFFMASK);
 		break;
 	default:
 		goto drop_datagram;

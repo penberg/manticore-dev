@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <stdio.h> /* FIXME */
 
 static const struct socket_operations udp_socket_ops = {
     .recvfrom = udp_recvfrom,
@@ -76,10 +77,109 @@ struct socket *socket_lookup_by_flow(uint16_t local_port, uint16_t foreign_port)
 	return NULL;
 }
 
-void socket_input(struct socket *sk, struct packet_view *pk)
+static struct ip_fragment *alloc_fragment(struct ip_datagram *datagram)
+{
+	printf("%s(datagram=%p) nr_fragments = %lu\n", __func__, datagram, datagram->nr_fragments);
+	if (datagram->nr_fragments >= MAX_FRAGMENTS) {
+		return NULL;
+	}
+	return &datagram->fragments[datagram->nr_fragments++];
+}
+
+bool ip_datagram_append(struct ip_datagram *datagram, void *data, uint16_t offset, uint16_t len)
+{
+	printf("%s(datagram=%p, data=%p, offset=%u, len=%u)\n", __func__, datagram, data, offset, len);
+	struct ip_fragment *fragment = alloc_fragment(datagram);
+	if (!fragment) {
+		return false;
+	}
+	fragment->data = data;
+	fragment->offset = offset;
+	fragment->len = len;
+	fragment->remaining = len;
+	return true;
+}
+
+struct ip_fragment *datagram_next_fragment(struct ip_datagram *datagram)
+{
+	printf("%s(datagram=%p)\n", __func__, datagram);
+	/* FIXME: optimize */
+	for (int i = 0; i < MAX_FRAGMENTS; i++) {
+		struct ip_fragment *fragment = &datagram->fragments[i];
+
+		size_t fragment_start = fragment->offset;
+		size_t fragment_end = fragment->offset + fragment->len;
+
+		if (datagram->offset < fragment_start) {
+			continue;
+		}
+		if (datagram->offset >= fragment_end) {
+			continue;
+		}
+		return fragment;
+	}
+	return NULL;
+}
+
+size_t ip_fragment_consume(struct ip_fragment *fragment, void *buf, size_t len)
+{
+	printf("%s(fragment=%p, buf=%p, len=%lu) => remaining=%lu\n", __func__, fragment, buf, len, fragment->remaining);
+	size_t nr = fragment->remaining;
+	if (nr > len) {
+		nr = len;
+	}
+	memcpy(buf, fragment->data, nr);
+
+	fragment->data += nr;
+	fragment->remaining -= nr;
+
+	return nr;
+}
+
+static struct ip_datagram *find_datagram(struct socket *sk, uint16_t id)
+{
+	for (int idx = 0; idx < MAX_DATAGRAMS; idx++) {
+		struct ip_datagram *datagram = &sk->datagrams[idx];
+
+		if (datagram->id == id) {
+			return datagram;
+		}
+	}
+	return NULL;
+}
+
+static struct ip_datagram *alloc_datagram(struct socket *sk, uint16_t id)
+{
+	struct ip_datagram *datagram = &sk->datagrams[0]; // FIXME
+	if (datagram) {
+		// FIXME memset()
+		datagram->id = id;
+	}
+	return datagram;
+}
+
+struct ip_datagram *socket_get_datagram(struct socket *sk, uint16_t id)
+{
+	struct ip_datagram *datagram = find_datagram(sk, id);
+	if (datagram) {
+		return datagram;
+	}
+	return alloc_datagram(sk, id);
+}
+
+struct ip_datagram *socket_next_datagram(struct socket *sk)
+{
+	printf("%s(socket=%p)\n", __func__, sk);
+
+	return &sk->datagrams[0]; // FIXME
+}
+
+void *socket_input(struct socket *sk, struct packet_view *pk)
 {
 	// FIXME: This overwrites existing data.
 	memcpy(sk->rx_buffer, pk->data, packet_view_len(pk));
+
+	return sk->rx_buffer;
 }
 
 int socket_accept(struct socket *sk, struct sockaddr *restrict addr, socklen_t *restrict addrlen)
