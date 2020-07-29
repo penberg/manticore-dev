@@ -4,12 +4,14 @@
 #include "internal/setup.h"
 #include "internal/trace.h"
 
+#include <manticore/config_abi.h>
+#include <manticore/io_buffer.h>
+#include <manticore/io_queue.h>
+#include <manticore/syscalls.h>
+
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <linux/if_arp.h>
-#include <manticore/config_abi.h>
-#include <manticore/io_queue.h>
-#include <manticore/syscalls.h>
 
 #include <string.h>
 
@@ -56,11 +58,11 @@ static void arp_reply(struct arphdr *request_arph)
 	io_submit(__liblinux_eth_ioqueue, reply_ethh, sizeof(*reply_ethh) + sizeof(*reply_arph) + sizeof(*reply_arp));
 }
 
-void arp_input(struct packet_view *pk)
+void arp_input(struct io_buffer *iob)
 {
 	LIBLINUX_TRACE(arp_input);
 
-	struct arphdr *arph = pk->start;
+	struct arphdr *arph = io_buffer_start(iob);
 
 	switch (ntohs(arph->ar_op)) {
 	case ARPOP_REQUEST:
@@ -69,6 +71,4 @@ void arp_input(struct packet_view *pk)
 	default:
 		break;
 	}
-
-	// FIXME: Notify OS that packet is consumed.
 }

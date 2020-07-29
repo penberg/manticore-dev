@@ -4,6 +4,8 @@
 #include "internal/socket.h"
 #include "internal/trace.h"
 
+#include <manticore/io_buffer.h>
+
 #include <arpa/inet.h>
 #include <assert.h> // FIXME
 #include <errno.h>
@@ -54,6 +56,12 @@ ssize_t udp_recvfrom(struct socket *sk, void *restrict buf, size_t len, int flag
 		nr = len;
 	}
 	memcpy(buf, sk->rx_buffer + data_off, nr);
+
+	io_buffer_put(sk->iob);
+
+	sk->rx_buffer = NULL;
+
+	sk->iob = NULL;
 
 	return nr;
 }
@@ -234,11 +242,11 @@ ssize_t udp_sendto(struct socket *sk, const void *buf, size_t len, int flags, co
 	return len;
 }
 
-static void udp_input(struct packet_view *pk)
+static void udp_input(struct io_buffer *iob)
 {
 	LIBLINUX_TRACE(udp_input);
 
-	const struct udphdr *udph = pk->start + sizeof(struct iphdr);
+	const struct udphdr *udph = io_buffer_start(iob) + sizeof(struct iphdr);
 
 	uint16_t udp_len = ntohs(udph->len);
 
@@ -246,9 +254,9 @@ static void udp_input(struct packet_view *pk)
 
 	assert(sk != NULL);
 
-	socket_input(sk, pk);
+	socket_input(sk, iob);
 
-	packet_view_trim(pk, sizeof(struct iphdr) + udp_len);
+	io_buffer_consume(iob, sizeof(struct iphdr) + udp_len);
 }
 
 /* Returns true if datagram is fragmented.  */
@@ -257,15 +265,15 @@ static inline bool ip_is_fragment(uint16_t frag_off)
 	return frag_off & IP_MF || frag_off & IP_OFFMASK;
 }
 
-bool ip_input(struct packet_view *pk)
+bool ip_input(struct io_buffer *iob)
 {
 	LIBLINUX_TRACE(ip_input);
 
-	const struct iphdr *iph = pk->start;
-
-	if (packet_view_len(pk) < sizeof(*iph)) {
+	const struct iphdr *iph = io_buffer_start(iob);
+	if (io_buffer_remaining(iob) < sizeof(*iph)) {
 		goto drop_datagram;
 	}
+
 	uint16_t ip_len = ntohs(iph->tot_len);
 	if (ip_len < sizeof(*iph)) {
 		goto drop_datagram;
@@ -283,7 +291,7 @@ bool ip_input(struct packet_view *pk)
 
 	switch (iph->protocol) {
 	case IPPROTO_UDP:
-		udp_input(pk);
+		udp_input(iob);
 		break;
 	default:
 		goto drop_datagram;
@@ -291,6 +299,7 @@ bool ip_input(struct packet_view *pk)
 	return true;
 
 drop_datagram:
+	io_buffer_consume_full(iob);
 	stats.ip_datagrams_dropped++;
 	return false;
 }

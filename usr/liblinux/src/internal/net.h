@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 
 struct socket;
+struct io_buffer;
 
 /// A packet descriptor.
 ///
@@ -37,8 +38,8 @@ static inline void packet_view_trim(struct packet_view *pk, size_t size)
 bool net_input(struct packet_view *pk);
 
 bool net_input(struct packet_view *pk);
-bool ip_input(struct packet_view *pk);
-void arp_input(struct packet_view *pk);
+bool ip_input(struct io_buffer *iob);
+void arp_input(struct io_buffer *iob);
 
 ssize_t udp_recvfrom(struct socket *sk, void *restrict buf, size_t len, int flags, struct sockaddr *restrict src_addr, socklen_t *restrict addrlen);
 ssize_t udp_sendto(struct socket *sk, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);

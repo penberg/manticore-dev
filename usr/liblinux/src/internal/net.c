@@ -3,6 +3,8 @@
 #include "internal/setup.h"
 #include "internal/trace.h"
 
+#include <manticore/io_buffer.h>
+
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <netinet/in.h>
@@ -16,27 +18,27 @@ struct net_statistics {
 
 static struct net_statistics stats;
 
-static bool net_input_one(struct packet_view *pk)
+static bool net_input_one(struct io_buffer *iob)
 {
 	LIBLINUX_TRACE(net_input);
 
-	struct ethhdr *ethh = pk->start;
+	struct ethhdr *ethh = io_buffer_start(iob);
 
-	if (packet_view_len(pk) < sizeof(*ethh)) {
+	if (io_buffer_remaining(iob) < sizeof(*ethh)) {
+		io_buffer_consume_full(iob);
 		stats.packets_dropped++;
-		packet_view_trim(pk, packet_view_len(pk));
 		return false;
 	}
-	packet_view_trim(pk, sizeof(*ethh));
+	io_buffer_consume(iob, sizeof(*ethh));
 
 	if (ethh->h_proto == ntohs(ETH_P_IP)) {
-		return ip_input(pk);
+		return ip_input(iob);
 	} else if (ethh->h_proto == ntohs(ETH_P_ARP)) {
-		arp_input(pk);
+		arp_input(iob);
 		return false;
 	} else {
+		io_buffer_consume_full(iob);
 		stats.packets_dropped++;
-		packet_view_trim(pk, packet_view_len(pk));
 		return false;
 	}
 }
@@ -49,10 +51,21 @@ bool net_input(struct packet_view *pk)
 
 	size_t len = pk->end - pk->start;
 
-	while (packet_view_len(pk) > 0) {
-		ret |= net_input_one(pk);
+	/* FIXME: allocate dynamically */
+	static struct io_buffer iob;
+       
+	iob = (struct io_buffer) {
+		.queue = __liblinux_eth_ioqueue,
+		.ref_count = 1,
+		.data = addr,
+		.len = len,
+		.offset = 0,
+	};
+
+	while (io_buffer_remaining(&iob) > 0) {
+		ret |= net_input_one(&iob);
 	}
-	io_complete(__liblinux_eth_ioqueue, addr, len);
+	io_buffer_put(&iob);
 
 	return ret;
 }

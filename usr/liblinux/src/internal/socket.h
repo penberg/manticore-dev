@@ -6,6 +6,7 @@
 
 #include <sys/socket.h>
 
+struct io_buffer;
 struct packet_view;
 struct socket;
 
@@ -19,7 +20,8 @@ struct socket_operations {
 struct socket {
 	const struct socket_operations *ops;
 	uint16_t local_port;
-	char rx_buffer[1500]; /* FIXME make bigger */
+	struct io_buffer *iob;
+	void *rx_buffer;
 };
 
 int socket_alloc(int domain, int type, int protocol);
@@ -27,7 +29,7 @@ int socket_alloc(int domain, int type, int protocol);
 struct socket *socket_lookup_by_fd(int sockfd);
 struct socket *socket_lookup_by_flow(uint16_t local_port, uint16_t foreign_port);
 
-void socket_input(struct socket *sk, struct packet_view *pk);
+void socket_input(struct socket *sk, struct io_buffer *iob);
 
 int socket_accept(struct socket *sk, struct sockaddr *restrict addr, socklen_t *restrict addrlen);
 int socket_bind(struct socket *sk, const struct sockaddr *addr, socklen_t addrlen);

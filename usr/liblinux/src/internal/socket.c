@@ -6,6 +6,8 @@
 
 #include "internal/net.h"
 
+#include <manticore/io_buffer.h>
+
 #include <errno.h>
 #include <netinet/in.h>
 #include <string.h>
@@ -76,10 +78,16 @@ struct socket *socket_lookup_by_flow(uint16_t local_port, uint16_t foreign_port)
 	return NULL;
 }
 
-void socket_input(struct socket *sk, struct packet_view *pk)
+void socket_input(struct socket *sk, struct io_buffer *iob)
 {
+	io_buffer_get(iob);
+
+	sk->rx_buffer = io_buffer_start(iob);
+	sk->iob = iob;
+#if 0
 	// FIXME: This overwrites existing data.
 	memcpy(sk->rx_buffer, pk->start, packet_view_len(pk));
+#endif
 }
 
 int socket_accept(struct socket *sk, struct sockaddr *restrict addr, socklen_t *restrict addrlen)
