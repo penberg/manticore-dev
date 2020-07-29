@@ -5,6 +5,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -fno-stack-protector")
 add_library(manticore
     src/atomic-ring-buffer.c
     src/io_queue.c
+    src/io_buffer.c
     src/syscall.c
     src/syscalls/acquire.c
     src/syscalls/console_print.c
