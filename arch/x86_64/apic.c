@@ -90,6 +90,11 @@ static void apic_send_ipi(uint32_t dest_id, uint32_t val)
 	apic_write_icr((uint64_t) dest_id << 32 | val);
 }
 
+void apic_ipi_allbutself(unsigned vector)
+{
+	apic_write_icr(vector);
+}
+
 static void apic_timer_init(void)
 {
 	irq_vector_t vector = request_irq(apic_timer_intr, NULL);
