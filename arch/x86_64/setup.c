@@ -88,6 +88,7 @@ void arch_early_setup(void)
 	parse_platform_config();
 	init_mmu_map();
 	setup_nxe();
+	smp_init();
 }
 
 void arch_late_setup(void)
