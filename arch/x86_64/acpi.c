@@ -1,4 +1,5 @@
 #include <arch/vmem.h>
+#include <arch/smp.h>
 
 #include <assert.h>
 #include <stdint.h>
@@ -45,6 +46,12 @@ struct acpi_madt_header {
 	uint32_t flags;
 };
 
+struct acpi_madt_local_apic {
+	uint8_t processor_uid;	/* Processor object ID */
+	uint8_t id;		/* Processor local APIC ID */
+	uint32_t flags;
+} __attribute__((packed));;
+
 enum {
 	ACPI_PROCESSOR_LOCAL_APIC = 0x00,
 	ACPI_IO_APIC = 0x01,
@@ -72,8 +79,6 @@ static void acpi_parse_madt(void *raw_madt)
 		return;
 	}
 
-	size_t nr_cpus = 0;
-
 	size_t madt_len = madt_header->length;
 	size_t off = sizeof(struct acpi_madt_header);
 	while (off < madt_len) {
@@ -81,10 +86,11 @@ static void acpi_parse_madt(void *raw_madt)
 		uint8_t len = acpi_read_u8(raw_madt + off + 1);
 
 		switch (type) {
-		case ACPI_PROCESSOR_LOCAL_APIC:
-			nr_cpus++;
+		case ACPI_PROCESSOR_LOCAL_APIC: {
+			struct acpi_madt_local_apic *processor = raw_madt + off + 2;
+			register_cpu(processor->id);
 			break;
-		case ACPI_IO_APIC:
+		} case ACPI_IO_APIC:
 			break;
 		case ACPI_INT_SOURCE_OVERRIDE:
 			break;
@@ -96,7 +102,6 @@ static void acpi_parse_madt(void *raw_madt)
 		}
 		off += len;
 	}
-	printf("Found %d CPUs via ACPI MADT\n", nr_cpus);
 }
 
 /* Parse platform configuration from the given ACPI Root System Description
