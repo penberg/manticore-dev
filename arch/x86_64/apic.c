@@ -19,6 +19,7 @@
 /* Local APIC registers in MSR offsets. Specified in Table 10-6 ("Local APIC
    Register Address Map Supported by x2APIC") of Intel SDM.  */
 enum {
+	APIC_ID = 0x802,		// Local APIC ID register
 	APIC_EOI = 0x80b,
 	APIC_SPIV = 0x80f,
 	APIC_ICR = 0x830,		// Interrupt Command Register (ICR)
@@ -53,6 +54,11 @@ void apic_compose_msi_msg(struct msi_message *msg, uint8_t vector, uint8_t dest_
 	msg->msg_data = MSI_TRIGGER_EDGE | MSI_DELIVERY_FIXED | vector;
 }
 
+static uint64_t apic_read(uint32_t addr)
+{
+	return rdmsr(addr);
+}
+
 static void apic_write(uint32_t addr, uint64_t val)
 {
 	wrmsr(addr, val);
@@ -62,6 +68,11 @@ static void apic_timer_intr(void *arg)
 {
 	/* An interrupt wakes up the kernel from its idle loop that blocks on
 	   an arch_halt_cpu() call.  */
+}
+
+uint32_t apic_local_id(void)
+{
+	return apic_read(APIC_ID);
 }
 
 static void apic_eoi(void)

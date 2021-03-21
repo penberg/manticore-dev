@@ -17,4 +17,6 @@ bool apic_is_bsp(void);
 
 void init_apic(void);
 
+uint32_t apic_local_id(void);
+
 #endif
