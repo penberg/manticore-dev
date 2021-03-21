@@ -84,9 +84,9 @@ void arch_early_setup(void)
 	init_idt();
 	init_task();
 	init_syscall();
+	init_apic();
 	parse_platform_config();
 	init_mmu_map();
-	init_apic();
 	setup_nxe();
 }
 
