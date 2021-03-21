@@ -57,3 +57,14 @@ void start_kernel(void)
 	printf("Halted.\n");
 	arch_halt_cpu();
 }
+
+void start_secondary(void)
+{
+	cpu_bringup(/* FIXME*/ 0);
+
+	for (;;)
+		;
+
+	printf("Secondary CPU halted.\n");
+	arch_halt_cpu();
+}

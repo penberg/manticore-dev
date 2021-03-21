@@ -1,6 +1,7 @@
 #include <arch/processor.h>
 #include <arch/vmem-defs.h>
 #include <arch/segment.h>
+#include <arch/cpuid.h>
 #include <arch/msr.h>
 
 .section .boot
@@ -109,12 +110,34 @@ start64:
 	mov	%eax, %gs
 	mov	%eax, %ss
 
-	/* Initialize stack pointer */
+	/* Is this the BSP or an AP? */
+	mov	$X86_IA32_APIC_BASE, %ecx
+	rdmsr
+	and	$X86_IA32_APIC_BASE_BSP, %eax
+	test	%eax, %eax
+	je	setup_secondary
+
+	/* Initialize BSP stack pointer */
 	mov	$init_stack_top, %rsp
 
 	/* Call into the kernel */
 	call	start_kernel
+	jmp	stop_kernel
 
+setup_secondary:
+	xor	%rax, %rax
+	mov	$X86_CPUID_FEATURE, %eax
+	cpuid
+	shr	$X86_CPUID_FEATURE_EBX_APIC_ID_SHIFT, %ebx /* TODO: ebx has the CPU ID now, use it to figure out SMP stack.  */
+
+	/* Initialize AP stack pointer */
+	mov	$smp_stack_top, %rsp
+
+	/* Call into the kernel */
+	call	start_secondary
+	jmp	stop_kernel
+
+stop_kernel:
 	/* If we ever return from start_kernel(), disable interrupts and
 	   execute `hlt` instruction in an infinite loop. */
 	cli
