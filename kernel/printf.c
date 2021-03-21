@@ -1,6 +1,7 @@
 #include <kernel/printf.h>
 
 #include <kernel/console.h>
+#include <kernel/spinlock.h>
 
 #include <limits.h>
 #include <stdbool.h>
@@ -9,6 +10,8 @@
 #include <string.h>
 
 typedef void (*fmt_putchar_t)(int c, void *priv);
+
+static DEFINE_SPIN_LOCK(printf_lock);
 
 enum format_flags {
 	FMT_LONG = 1UL << 0,
@@ -258,7 +261,9 @@ int printf(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
+	spin_lock(&printf_lock);
 	int ret = vprintf(fmt, ap);
+	spin_unlock(&printf_lock);
 	va_end(ap);
 	return ret;
 }
