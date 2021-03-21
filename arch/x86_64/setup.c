@@ -85,14 +85,23 @@ void arch_early_setup(void)
 	init_task();
 	init_syscall();
 	init_apic();
-	parse_platform_config();
-	init_mmu_map();
 	setup_nxe();
-	smp_init();
+}
+
+void arch_early_setup_secondary(void)
+{
+	i8259_remap();
+	init_gdt();
+	init_idt();
+	// FIXME: init_task(); -- kernel stack issue!
+	init_syscall();
+	init_apic();
+	setup_nxe();
 }
 
 void arch_late_setup(void)
 {
+	init_mmu_map();
 	virtio_register_drivers();
 	pci_probe();
 }

@@ -36,6 +36,8 @@ void start_kernel(void)
 	printf("Booting kernel ...\n");
 	page_alloc_init();
 	arch_early_setup();
+	parse_platform_config();
+	smp_init();
 	err = kmem_init();
 	if (err) {
 		panic("kmem_init failed");
@@ -60,10 +62,9 @@ void start_kernel(void)
 
 void start_secondary(void)
 {
-	cpu_bringup(/* FIXME*/ 0);
+	arch_early_setup_secondary();
 
-	for (;;)
-		;
+	cpu_bringup();
 
 	printf("Secondary CPU halted.\n");
 	arch_halt_cpu();
