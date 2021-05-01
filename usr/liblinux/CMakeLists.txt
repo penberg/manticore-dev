@@ -20,6 +20,7 @@ add_library(linux
     src/string/strerror.c
     src/string/strlen.c
     src/string/memcpy.c
+    src/pthread.c
 )
 
 target_include_directories(linux PUBLIC

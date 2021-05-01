@@ -9,3 +9,7 @@ target_link_libraries(tst-console_print linux)
 add_executable(tst-vmspace_alloc tst-vmspace_alloc.c)
 target_link_libraries(tst-vmspace_alloc manticore)
 target_link_libraries(tst-vmspace_alloc linux)
+
+add_executable(pthread-test pthread-test.c)
+target_link_libraries(pthread-test manticore)
+target_link_libraries(pthread-test linux)
